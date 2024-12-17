@@ -1,0 +1,37 @@
+name: NuGet Publish
+description: "Publishes packages to NuGet"
+inputs:
+  nuget-api-key:
+    description: "NuGet API key."
+    required: true
+  version:
+    description: "Version number of the packages."
+    required: true
+  directory:
+    description: "Directory containing the solution."
+    required: false
+    default: "src"
+
+runs:
+  using: composite
+
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.x
+
+    - name: Create Package
+      shell: bash
+      run: dotnet pack ${{ inputs.directory }} /p:Version=${{ inputs.version }} -p:SymbolPackageFormat=snupkg --configuration Release --include-symbols --output ./packages/
+
+    - name: Publish to NuGet
+      shell: bash
+      run: dotnet nuget push ./packages/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ inputs.nuget-api-key }} --skip-duplicate
+
+    - name: Create Release
+      shell: bash
+      run: gh release create v${{ inputs.version }} --generate-notes
